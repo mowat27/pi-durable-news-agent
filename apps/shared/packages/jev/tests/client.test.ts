@@ -70,6 +70,32 @@ test("does not retry a 400", async (t) => {
   assert.equal(fetch.mock.callCount(), 1);
 });
 
+test("a failed call says why: the provider's message is in the error", async (t) => {
+  stub(t, async () =>
+    ok({ detail: { error_type: "api_usage_error", message: "Unknown model: nope" } }, 400),
+  );
+  await assert.rejects(
+    live().systemOne({ text: "x" }, questions),
+    /openrouter HTTP 400: Unknown model: nope/,
+  );
+});
+
+const sentModel = (fetch: { mock: { calls: { arguments: unknown[] }[] } }) =>
+  JSON.parse((fetch.mock.calls[0].arguments[1] as RequestInit).body as string).model;
+
+test("typesafe is sent its own model name for a command's OpenRouter alias", async (t) => {
+  const fetch = stub(t, async () => ok(valid));
+  const client = new JevClient({ provider: "typesafe", apiKey: "dummy-key", retryDelayMs: 0 });
+  await client.systemOne({ text: "x" }, questions, { model: "~typesafe/jev-latest" });
+  assert.equal(sentModel(fetch), "jev-latest");
+});
+
+test("openrouter keeps the alias as given", async (t) => {
+  const fetch = stub(t, async () => ok(valid));
+  await live().systemOne({ text: "x" }, questions, { model: "~typesafe/jev-latest" });
+  assert.equal(sentModel(fetch), "~typesafe/jev-latest");
+});
+
 test("an undeclared choice is a contract error, never retried", async (t) => {
   const bad = structuredClone(valid) as any;
   bad.answers.kind.choice = "rumor";

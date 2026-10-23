@@ -181,10 +181,12 @@ export class JevClient {
     opts: { model?: string; signal?: AbortSignal } = {},
   ): Promise<SystemOneResult> {
     opts.signal?.throwIfAborted();
-    const requestedModel =
+    const requestedModel = providerModel(
+      this.provider,
       opts.model ??
-      this.model ??
-      (this.provider === "mock" ? this.mock.model : DEFAULT_MODELS[this.provider]);
+        this.model ??
+        (this.provider === "mock" ? this.mock.model : DEFAULT_MODELS[this.provider]),
+    );
     const body: SystemOneRequest = { model: requestedModel, state, questions };
     validateRequest(body);
     let requestText: string;
@@ -242,14 +244,16 @@ export class JevClient {
           continue;
         }
         if (!res.ok) {
-          await res.body?.cancel();
+          const detail = await errorDetail(res);
           const hint =
             res.status === 401
               ? ` Check the ${KEY_ENV[this.provider]} key.`
               : res.status === 402
                 ? " Check account credits."
                 : "";
-          throw new Error(`${this.provider} HTTP ${res.status}.${hint}`);
+          throw new Error(
+            `${this.provider} HTTP ${res.status}${detail ? `: ${detail}` : ""}.${hint}`,
+          );
         }
         const responseText = await res.text();
         signal.throwIfAborted();
@@ -270,6 +274,23 @@ export class JevClient {
       clearTimeout(timer);
     }
   }
+}
+
+/** Commands pin OpenRouter's alias (~typesafe/jev-latest); the direct TypeSafe API names that model without the prefix. */
+function providerModel(provider: JevProvider, model: string): string {
+  return provider === "typesafe" ? model.replace(/^~?typesafe\//, "") : model;
+}
+
+/** The provider's own message from an error body, one short line, or "" when there is none. */
+async function errorDetail(res: Response): Promise<string> {
+  const text = (await res.text().catch(() => "")).trim();
+  let found: unknown = text;
+  try {
+    const body = JSON.parse(text);
+    found =
+      body?.detail?.message ?? body?.error?.message ?? body?.message ?? body?.detail ?? body?.error;
+  } catch {}
+  return typeof found === "string" ? found.replace(/\s+/g, " ").trim().slice(0, 200) : "";
 }
 
 function selectProvider(explicit?: JevProvider): JevProvider {
