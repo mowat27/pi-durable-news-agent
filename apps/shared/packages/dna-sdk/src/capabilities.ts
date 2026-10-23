@@ -61,6 +61,7 @@ export const CAPABILITIES = {
     summary: "Sweeps with counts, phases, costs and audit",
     routes: ["sweeps.list", "sweeps.get"],
   },
+  "sweep.start": { summary: "Start a sweep now, outside the schedule", routes: ["sweeps.start"] },
   "runs.read": {
     summary: "Agent runs with generations, tool calls and subagents",
     routes: ["executions.runs", "executions.run"],

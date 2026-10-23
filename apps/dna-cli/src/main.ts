@@ -517,6 +517,20 @@ const COMMANDS: Record<string, Command> = {
       return { data: s, text: print.sweepDetail(s as never) };
     },
   },
+  "sweep-now": {
+    usage: "sweep-now",
+    summary: "Start a sweep now, outside the schedule",
+    async run() {
+      const r = await client().startSweep();
+      return {
+        data: r,
+        text:
+          r.status === "accepted"
+            ? `Started sweep ${r.sweep!.id}`
+            : `No sweep started: ${r.sweep?.reason ?? r.status}`,
+      };
+    },
+  },
   runs: {
     usage: "runs [--sweep id] [--conversation id] [--limit N]",
     summary: "Agent runs",

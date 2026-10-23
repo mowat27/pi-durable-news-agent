@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import {
   Activity,
   Clock,
@@ -7,6 +7,7 @@ import {
   LoaderCircle,
   PanelLeft,
   PanelRight,
+  Play,
   Server,
   SlidersHorizontal,
   WifiOff,
@@ -15,7 +16,7 @@ import {
 import { usd } from "@dna/sdk";
 import { layout, toggle } from "../client/layout";
 import { go } from "../client/route";
-import { agentState, api, attempt, connection, feed, info, now, ui } from "../client/store";
+import { agentState, api, attempt, connection, feed, info, notify, now, ui } from "../client/store";
 
 const busy = computed(() => agentState.value?.busy ?? false);
 const schedule = computed(() => agentState.value?.schedule);
@@ -36,6 +37,23 @@ async function setCards(value: string) {
 async function setSchedule(value: string) {
   const next = await attempt(() => api.setSchedule(value === "off" ? null : Number(value)));
   if (next) feed.apply({ type: "schedule", schedule: next });
+}
+const starting = ref(false);
+/** A manual sweep, outside the schedule. The server skips it when one is already running. */
+async function sweepNow() {
+  starting.value = true;
+  try {
+    const r = await attempt(() => api.startSweep());
+    if (r)
+      notify(
+        r.status === "accepted"
+          ? `Sweep ${r.sweep!.id} started`
+          : `No sweep started: ${r.sweep?.reason ?? r.status}`,
+        r.status === "accepted" ? "info" : "bad",
+      );
+  } finally {
+    starting.value = false;
+  }
 }
 /** All time: what the agent's model, jev and image generation have cost on this device. */
 const spend = computed(() => agentState.value?.spend);
@@ -106,6 +124,18 @@ const spend = computed(() => agentState.value?.spend);
       <span class="stat device" :title="`Device ${info?.device ?? ''}`" data-testid="device"
         ><Server :size="15" />{{ info?.deviceName ?? info?.device ?? "device" }}</span
       >
+      <button
+        class="bar-button"
+        data-cap="sweep.start"
+        aria-label="Sweep now"
+        title="Start a sweep now, outside the schedule"
+        :disabled="starting"
+        @click="sweepNow"
+      >
+        <LoaderCircle v-if="starting" :size="16" class="spin" /><Play v-else :size="16" /><span
+          >Sweep now</span
+        >
+      </button>
       <button
         class="bar-button"
         data-cap="runs.read"

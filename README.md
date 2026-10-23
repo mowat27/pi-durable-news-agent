@@ -163,7 +163,7 @@ Search is free by default and needs no key. Every engine sits in a chain, and an
   <img src="images/05_three_clients.png" alt="Browser, TUI and CLI all talk to dna-server-api through one capability list" width="780">
 </p>
 
-`apps/shared/packages/dna-sdk/src/capabilities.ts` lists 26 capabilities: read and search the feed, give feedback, answer taste questions, chat, steer, stop, pick the model, set the sweep schedule and the cards per sweep, move the compaction points, compact, edit keywords, sources and source weights, and read every sweep, run, tool call, cost and log line. **A test fails if the browser, the TUI or the CLI is missing any of them.** Every client reads one server-sent stream, `/v1/stream`: a snapshot, then deltas, through the same `dna-sdk` reducers.
+`apps/shared/packages/dna-sdk/src/capabilities.ts` lists 27 capabilities: read and search the feed, give feedback, answer taste questions, chat, steer, stop, pick the model, set the sweep schedule and the cards per sweep, start a sweep now, move the compaction points, compact, edit keywords, sources and source weights, and read every sweep, run, tool call, cost and log line. **A test fails if the browser, the TUI or the CLI is missing any of them.** Every client reads one server-sent stream, `/v1/stream`: a snapshot, then deltas, through the same `dna-sdk` reducers.
 
 The agent can drive the same actions from chat with its 24 tools: vote and label cards, boost or lower a topic or a source, open a search tab in your browser, scroll to a card and highlight it, link cards into a timeline, change the schedule, read a full article, and start a background deep research that runs 1 to 5 subagents and posts each answer back as it finishes.
 

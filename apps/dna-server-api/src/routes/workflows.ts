@@ -6,7 +6,7 @@ import { bodyOf, bool, num, oneOf, str, type Handlers, type RouteDeps } from "./
 
 export function workflowRoutes({
   app,
-}: RouteDeps): Handlers<"workflow.newsSweep" | "sweeps.list" | "sweeps.get"> {
+}: RouteDeps): Handlers<"workflow.newsSweep" | "sweeps.start" | "sweeps.list" | "sweeps.get"> {
   const withCost = <T extends { id: number }>(s: T) => ({
     ...s,
     cost: app.store.telemetry.sweepCost(s.id),
@@ -26,6 +26,20 @@ export function workflowRoutes({
         cards,
       });
       if (result.status === "not_due") return res.status(200).json(result);
+      if (result.status === "replay") res.set("Idempotent-Replay", "true");
+      res
+        .status(result.status === "accepted" ? 202 : 200)
+        .json({ ...result, sweep: withCost(result.sweep!) });
+    },
+    "sweeps.start": async (req, res) => {
+      const body = bodyOf(req);
+      const requestId = str(body, "requestId", { max: 128 });
+      const cards = num(body, "cards", { min: 1, max: MAX_CARDS, integer: true });
+      const result = await startNewsSweep(app, app.main, app.ctx, {
+        trigger: "manual",
+        requestId,
+        cards,
+      });
       if (result.status === "replay") res.set("Idempotent-Replay", "true");
       res
         .status(result.status === "accepted" ? 202 : 200)

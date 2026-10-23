@@ -49,6 +49,12 @@ export const ROUTES = {
     scope: "read",
     summary: "Sweeps with counts, costs, credits and phases",
   },
+  "sweeps.start": {
+    method: "POST",
+    path: "/v1/sweeps",
+    scope: "chat",
+    summary: "Start a sweep now, outside the schedule",
+  },
   "sweeps.get": {
     method: "GET",
     path: "/v1/sweeps/:id",

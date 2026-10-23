@@ -173,6 +173,14 @@ export class DnaClient {
   sweep(id: number) {
     return this.call<Sweep & { toolCalls: unknown[] }>("sweeps.get", { params: { id } });
   }
+  /** A manual sweep now. Skipped when one is already running. */
+  startSweep(body: { cards?: number } = {}) {
+    const requestId = `manual:${newRequestId()}`;
+    return this.call<WorkflowResult>("sweeps.start", {
+      body: { ...body, requestId },
+      idempotencyKey: requestId,
+    });
+  }
   feed(query: { before?: number; limit?: number } = {}) {
     return this.call<Page<Card>>("feed", { query });
   }

@@ -182,6 +182,7 @@ export function buildCommands(state: CompletionState): Command[] {
     },
     { name: "sweeps", cap: "sweeps.read", description: "recent sweeps" },
     { name: "sweep", description: "one sweep: phases, audit, tool calls", argumentHint: "<id>" },
+    { name: "sweep-now", cap: "sweep.start", description: "start a sweep now" },
     { name: "usage", cap: "usage", description: "cost, tokens, jev calls and credits per day" },
     {
       name: "logs",

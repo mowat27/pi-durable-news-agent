@@ -486,6 +486,14 @@ export class App {
             "sweeps",
             (await cl.sweeps({ limit: 30 })).map(print.sweepLine),
           );
+        case "sweep-now": {
+          const r = await cl.startSweep();
+          return this.flash(
+            r.status === "accepted"
+              ? `Started sweep ${r.sweep!.id}`
+              : `No sweep started: ${r.sweep?.reason ?? r.status}`,
+          );
+        }
         case "sweep":
           return this.show(
             "detail",

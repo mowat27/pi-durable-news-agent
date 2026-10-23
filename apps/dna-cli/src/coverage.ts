@@ -24,6 +24,7 @@ export const CLI_COMMANDS: Record<CapabilityId, string> = {
   keywords: "keywords",
   sources: "sources",
   "sweeps.read": "sweeps",
+  "sweep.start": "sweep-now",
   "runs.read": "runs",
   "tool.read": "tool",
   usage: "usage",
