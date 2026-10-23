@@ -36,7 +36,8 @@ export function completeSweep(deps: Deps) {
         return toolError("complete_sweep failed: status presented but this sweep has no cards.", [
           "Present at least one card, or use status no_news.",
         ]);
-      const status = args.status === "presented" ? "completed" : "no_news";
+      // Nothing presented and jev failed along the way: that is a failed sweep, not a quiet one.
+      const status = args.status === "presented" ? "completed" : sweep.error ? "failed" : "no_news";
       const endedAt = new Date().toISOString();
       deps.store.sweeps.update(sweep.id, {
         status,
@@ -66,9 +67,13 @@ export function completeSweep(deps: Deps) {
         summary: args.summary,
         missing: audit?.missing,
       });
-      return toolText(
-        `Sweep #${sweep.id} ${status === "completed" ? "completed" : "closed with no news"}. ${cards} card${cards === 1 ? "" : "s"}.`,
-      );
+      const outcome =
+        status === "completed"
+          ? "completed"
+          : status === "failed"
+            ? `closed as failed (${sweep.error})`
+            : "closed with no news";
+      return toolText(`Sweep #${sweep.id} ${outcome}. ${cards} card${cards === 1 ? "" : "s"}.`);
     },
   });
 }

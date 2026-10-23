@@ -36,7 +36,12 @@ export function auditSweep(store: Store, sweepId: number, log?: Logger): SweepAu
       done.push("every source lead saved or skipped");
   }
   expected.push("complete_sweep");
-  if (["completed", "no_news"].includes(sweep.status)) done.push("complete_sweep");
+  // complete_sweep always writes the summary; an aborted sweep fails without one.
+  if (
+    ["completed", "no_news"].includes(sweep.status) ||
+    (sweep.status === "failed" && sweep.summary)
+  )
+    done.push("complete_sweep");
   const audit: SweepAudit = { expected, done, missing: expected.filter((e) => !done.includes(e)) };
   store.sweeps.update(sweepId, { audit });
   for (const step of audit.missing) {

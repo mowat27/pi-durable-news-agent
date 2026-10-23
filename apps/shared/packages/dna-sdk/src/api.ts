@@ -228,6 +228,7 @@ export interface Sweep {
     jevUsd: number;
     imageUsd: number;
     jevCalls: number;
+    jevFailed: number;
     tokensIn: number;
     tokensOut: number;
   };

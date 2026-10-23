@@ -69,13 +69,14 @@ const at = (t?: number) =>
       <h4><BadgeCheck :size="14" />jev calls</h4>
       <div v-for="j in detail.jevCalls" :key="j.id" class="sub-row">
         <span class="mono">{{ j.command }}</span
-        ><span>{{ ms(j.elapsedMs) }}</span
+        ><span v-if="j.error" class="status failed">failed</span><span>{{ ms(j.elapsedMs) }}</span
         ><span>{{ usd(j.costUsd) }}</span
         ><span>{{ j.attempts ?? 1 }} attempt</span> <span class="grow" /><CopyJson
           :value="j"
           label="jev call"
         />
-        <JsonView :value="j.answers" />
+        <p v-if="j.error" class="bad">{{ clean(j.error) }}</p>
+        <JsonView v-else :value="j.answers" />
       </div>
     </template>
     <template v-if="detail.firecrawlCalls.length">

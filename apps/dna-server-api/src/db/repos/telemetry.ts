@@ -728,7 +728,7 @@ export class TelemetryRepo implements TelemetryStore {
       generationRows,
       toolCallRows,
       children,
-      jevCalls: inCalls("jev_calls", toJev),
+      jevCalls: this.jevCallsOf(toolCallRows, callIds),
       firecrawlCalls: inCalls("firecrawl_calls", toFirecrawl),
       events: this.events({
         conversationId: summary.conversationId,
@@ -737,6 +737,31 @@ export class TelemetryRepo implements TelemetryStore {
         limit: 500,
       }),
     };
+  }
+
+  /**
+   * The jev calls of tool calls: those a call made itself, plus the sweep's own when the call is the one that ran the
+   * sweep (the gate, dedupe and rank calls carry a sweep id and no call id).
+   */
+  private jevCallsOf(
+    tools: Pick<ToolCallRow, "toolName" | "sweepId">[],
+    callIds: string[],
+  ): JevCallRow[] {
+    const sweepIds = tools.flatMap((t) =>
+      t.toolName === "run_news_sweep" && t.sweepId ? [t.sweepId] : [],
+    );
+    const where = [
+      callIds.length ? `call_id IN (${callIds.map(() => "?").join(",")})` : "",
+      sweepIds.length
+        ? `(call_id IS NULL AND sweep_id IN (${sweepIds.map(() => "?").join(",")}))`
+        : "",
+    ].filter(Boolean);
+    if (!where.length) return [];
+    return (
+      this.db
+        .prepare(`SELECT * FROM jev_calls WHERE ${where.join(" OR ")} ORDER BY id`)
+        .all(...callIds, ...sweepIds) as any[]
+    ).map(toJev);
   }
 
   toolCall(id: number): ToolCallDetail | undefined {
@@ -752,9 +777,7 @@ export class TelemetryRepo implements TelemetryStore {
     return {
       ...row,
       generation: g ? toGeneration(g) : undefined,
-      jevCalls: (
-        this.db.prepare("SELECT * FROM jev_calls WHERE call_id = ? ORDER BY id").all(paid) as any[]
-      ).map(toJev),
+      jevCalls: this.jevCallsOf([row], [paid]),
       firecrawlCalls: (
         this.db
           .prepare("SELECT * FROM firecrawl_calls WHERE call_id = ? ORDER BY id")
@@ -793,6 +816,7 @@ export class TelemetryRepo implements TelemetryStore {
     jevUsd: number;
     imageUsd: number;
     jevCalls: number;
+    jevFailed: number;
     tokensIn: number;
     tokensOut: number;
   } {
@@ -804,7 +828,7 @@ export class TelemetryRepo implements TelemetryStore {
       .get(bind({ sweep: sweepId })) as any;
     const j = this.db
       .prepare(
-        "SELECT COALESCE(SUM(cost_usd), 0) cost, COUNT(*) n FROM jev_calls WHERE sweep_id = ?",
+        "SELECT COALESCE(SUM(cost_usd), 0) cost, COUNT(*) n, COALESCE(SUM(error IS NOT NULL), 0) failed FROM jev_calls WHERE sweep_id = ?",
       )
       .get(sweepId) as any;
     const i = this.db
@@ -817,9 +841,20 @@ export class TelemetryRepo implements TelemetryStore {
       jevUsd: j.cost,
       imageUsd: i.cost,
       jevCalls: j.n,
+      jevFailed: j.failed,
       tokensIn: g.tin,
       tokensOut: g.tout,
     };
+  }
+
+  /** How many of a sweep's jev calls failed, and the first error. */
+  jevFailures(sweepId: number): { failed: number; total: number; error?: string } {
+    const r = this.db
+      .prepare(
+        "SELECT COUNT(*) total, COALESCE(SUM(error IS NOT NULL), 0) failed, (SELECT error FROM jev_calls WHERE sweep_id = :sweep AND error IS NOT NULL ORDER BY id LIMIT 1) error FROM jev_calls WHERE sweep_id = :sweep",
+      )
+      .get(bind({ sweep: sweepId })) as any;
+    return { failed: r.failed, total: r.total, error: str(r.error) };
   }
 
   /** Everything this device has spent, all time: model generations, jev calls and generated images. */

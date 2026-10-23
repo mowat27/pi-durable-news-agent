@@ -46,7 +46,13 @@ const span = computed(() => {
       <dt>Model cost</dt>
       <dd>{{ usd(sweep.cost?.modelUsd) }}</dd>
       <dt>jev cost</dt>
-      <dd>{{ usd(sweep.cost?.jevUsd) }} for {{ sweep.cost?.jevCalls ?? 0 }} calls</dd>
+      <dd>
+        {{ usd(sweep.cost?.jevUsd) }} for {{ sweep.cost?.jevCalls ?? 0 }} calls<span
+          v-if="sweep.cost?.jevFailed"
+          class="bad"
+          >, {{ sweep.cost.jevFailed }} failed</span
+        >
+      </dd>
       <dt>Images</dt>
       <dd>{{ usd(sweep.cost?.imageUsd) }}</dd>
       <dt>Firecrawl</dt>

@@ -140,8 +140,10 @@ function scoreAnswer(criteria: string[], level: number): Answer {
 /** Deterministic jev for fixture mode: rules over the state text. */
 export function fixtureDecide(): Decide {
   const delay = Number(process.env.DNA_FIXTURE_JEV_DELAY_MS ?? 0);
+  const failure = process.env.DNA_FIXTURE_JEV_FAIL;
   return async (state: State, questions: Questions): Promise<SystemOneResult> => {
     if (delay) await new Promise((r) => setTimeout(r, delay));
+    if (failure) throw new Error(failure);
     const all = JSON.stringify(state).toLowerCase();
     const s = state as Record<string, unknown>;
     // Judge the item itself, not the reader's keyword lists that ride along in the state.

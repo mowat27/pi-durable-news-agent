@@ -50,11 +50,19 @@ export function runNewsSweep(deps: Deps, sweepTask: Task<SweepInput, any, SweepR
         );
       }
       const r = outcome.result;
+      const jev = deps.store.telemetry.jevFailures(sweep.id);
+      const jevFailure = jev.failed
+        ? `jev failed on ${jev.failed} of ${jev.total} calls: ${jev.error}`
+        : undefined;
+      if (jevFailure && !r.kept)
+        return toolError(`Sweep #${sweep.id} failed: ${jevFailure}.`, [
+          "Call complete_sweep with status no_news and a summary that names the jev failure.",
+        ]);
       const lines = r.candidates.map(
         (c) =>
           `#${c.id} ${c.title} (${c.source ?? "web"}) attention ${c.attention}${c.discussion ? ", has discussion" : ""}${c.matchedTopic ? `, topic ${c.matchedTopic}` : ""}${c.relationshipReview ? ", relationshipReview: research possible overlap before presenting" : ""}`,
       );
-      const head = `Sweep #${sweep.id}: ${r.gathered} gathered, jev kept ${r.kept}, ${r.duplicates} duplicates, ${r.candidates.length} candidates.`;
+      const head = `Sweep #${sweep.id}: ${r.gathered} gathered, jev kept ${r.kept}, ${r.duplicates} duplicates, ${r.candidates.length} candidates.${jevFailure ? ` Warning: ${jevFailure}, so items may be missing.` : ""}`;
       return toolText(
         r.candidates.length
           ? `${head}\n${lines.join("\n")}`

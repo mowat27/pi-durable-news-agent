@@ -343,11 +343,30 @@ export function createSweepTask(deps: Deps) {
           const kept = judged.filter(
             (i) => i.status === "candidate" && i.relevance !== undefined && i.worth !== undefined,
           ).length;
-          store.sweeps.update(sweepId, { kept });
-          store.sweeps.phase(sweepId, "gate", "done", `jev kept ${kept} of ${work.itemIds.length}`);
+          // A failed jev call is not a rejection: say so on the sweep instead of reporting that jev kept fewer.
+          const jev = store.telemetry.jevFailures(sweepId);
+          const gated = `jev kept ${kept} of ${work.itemIds.length}`;
+          const outcome = jev.failed
+            ? `${gated}, jev failed on ${jev.failed} of ${jev.total} calls: ${jev.error}`
+            : gated;
+          store.sweeps.update(sweepId, {
+            kept,
+            error: jev.failed
+              ? `jev failed on ${jev.failed} of ${jev.total} calls: ${jev.error}`
+              : undefined,
+          });
+          store.sweeps.phase(sweepId, "gate", jev.failed && !kept ? "failed" : "done", outcome);
+          if (jev.failed)
+            log.error("sweep.jev_failed", {
+              sweepId,
+              failed: jev.failed,
+              total: jev.total,
+              error: jev.error,
+            });
           publish(sweepId);
-          // jev kept nothing from the first bag: search once more with a fresh bag of topics.
-          if (!kept && (work.bag ?? 1) === 1) {
+          // jev kept nothing from the first bag: search once more with a fresh bag of topics. Not when jev failed:
+          // another bag would only fail the same way.
+          if (!kept && !jev.failed && (work.bag ?? 1) === 1) {
             await runtime.commit(async (tx) => {
               await progress(tx, task, "gate", `jev kept 0, searching a second bag of topics`);
               return {
@@ -358,7 +377,7 @@ export function createSweepTask(deps: Deps) {
             return;
           }
           await runtime.commit(async (tx) => {
-            await progress(tx, task, "gate", `jev kept ${kept} of ${work.itemIds.length}`);
+            await progress(tx, task, "gate", outcome);
             return {
               status: "running",
               checkpoint: { phase: "dedupe", gathered: work.itemIds.length },
